@@ -47,9 +47,6 @@ import java.util.HashSet;
 @RestController
 @SpringBootApplication(scanBasePackages = "com.example")
 public class ClientApplication extends WebSecurityConfigurerAdapter /*implements CommandLineRunner*/ {
-    @Autowired
-    private Environment env;
-
 
     @Value("${api.server.ping}")
     private String serverPing;
@@ -66,14 +63,8 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
     @Value("${server.ssl.trust-store-password}")
     private char[] trustStorePassword;
 
-//    @Value("${http.client.maxPoolSize}")
-    private Integer maxPoolSize = 10;
-
     @Autowired
-    private ResourceLoader resourceLoader;
-
-    @Autowired
-    private RestTemplate restTemplate;// = new RestTemplate();
+    private RestTemplate restTemplate;
 
 //    @Override
     public void run(String... args) throws Exception {
@@ -86,16 +77,6 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
     public static void main(String[] args) {
         SpringApplication.run(ClientApplication.class, args);
     }
-
-//    @PostConstruct
-//    public void setUp() {
-//        System.setProperty("javax.net.debug", "ssl");
-//        System.setProperty("https.protocols", "TLSv1.2");
-//        System.setProperty("javax.net.ssl.keyStore", env.getProperty("server.ssl.key-store"));
-//        System.setProperty("javax.net.ssl.keyStorePassword", env.getProperty("server.ssl.key-store-password"));
-//        System.setProperty("javax.net.ssl.trustStore", env.getProperty("server.ssl.trust-store"));
-//        System.setProperty("javax.net.ssl.trustStorePassword", env.getProperty("server.ssl.trust-store-password"));
-//    }
 
     @RequestMapping(value = "/server/ping")
     public ResponseEntity<String> pingServer() {
@@ -125,63 +106,5 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
         ClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
 
         return new RestTemplate(requestFactory);
-//        return new RestTemplate();
     }
-
-
-//    @Bean
-//    public ClientHttpRequestFactory httpRequestFactory() {
-//        return new HttpComponentsClientHttpRequestFactory(httpClient());
-//    }
-//
-//    @Bean
-//    public CloseableHttpClient httpClient() {
-//
-//        // Trust own CA and all child certs
-//        Registry<ConnectionSocketFactory> socketFactoryRegistry = null;
-//        try {
-//            SSLContext sslContext = SSLContexts
-//                    .custom()
-//                    .loadTrustMaterial(trustStore.getFile(),
-//                            trustStorePassword)
-//                    .build();
-//
-//            // Since only our own certs are trusted, hostname verification is probably safe to bypass
-//            SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(sslContext,
-//                    new HostnameVerifier() {
-//
-//                        @Override
-//                        public boolean verify(final String hostname,
-//                                              final SSLSession session) {
-//                            return true;
-//                        }
-//                    });
-//
-//            socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
-//                    .register("http", PlainConnectionSocketFactory.getSocketFactory())
-//                    .register("https", sslSocketFactory)
-//                    .build();
-//
-//        } catch (Exception e) {
-//            //TODO: handle exceptions
-//            e.printStackTrace();
-//        }
-//
-//        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
-//        connectionManager.setMaxTotal(maxPoolSize);
-//        // This client is for internal connections so only one route is expected
-//        connectionManager.setDefaultMaxPerRoute(maxPoolSize);
-//        return HttpClientBuilder.create()
-//                .setConnectionManager(connectionManager)
-//                .disableCookieManagement()
-//                .disableAuthCaching()
-//                .build();
-//    }
-//
-//    @Bean
-//    public RestTemplate restTemplate() {
-//        RestTemplate restTemplate = new RestTemplate();
-//        restTemplate.setRequestFactory(httpRequestFactory());
-//        return restTemplate;
-//    }
 }
