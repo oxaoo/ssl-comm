@@ -1,11 +1,6 @@
 keytool -genkeypair -alias server-keypair -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=server,O=example.com" -keypass server-key-pass -keystore server-keystore.jks -storepass server-keystore-pass -ext san=dns:localhost
-
 keytool -exportcert -alias server-keypair -file server-public-key.cer -keystore server-keystore.jks -storepass server-keystore-pass
-
 keytool -importcert -keystore client-truststore.jks -alias server-public-key -file server-public-key.cer -storepass client-truststore-pass -noprompt
-
 keytool -genkeypair -alias client-keypair -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=client,O=example.com" -keypass client-key-pass -keystore client-keystore.jks -storepass client-keystore-pass -ext san=dns:localhost
-
 keytool -exportcert -alias client-keypair -file client-public-key.cer -keystore client-keystore.jks -storepass client-keystore-pass
-
 keytool -importcert -keystore server-truststore.jks -alias client-public-key -file client-public-key.cer -storepass server-truststore-pass -noprompt
