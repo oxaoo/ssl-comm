@@ -4,10 +4,14 @@ import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.AllowAllHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +34,13 @@ import javax.annotation.PostConstruct;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
+import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.Arrays;
 import java.util.HashSet;
 
@@ -39,27 +50,15 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
     @Autowired
     private Environment env;
 
-//    static {
-//        System.setProperty("javax.net.debug", "ssl");
-//        System.setProperty("https.protocols", "TLSv1.1");
-//
-////        System.setProperty("javax.net.ssl.keyStore", Thread.currentThread().getContextClassLoader().getResource("client-keystore.jks").getPath());
-////        System.setProperty("javax.net.ssl.keyStorePassword", "secret");
-//        System.setProperty("javax.net.ssl.trustStore", env.getProperty("server.ssl.trust-store"));
-//        System.setProperty("javax.net.ssl.trustStorePassword", env.getProperty("server.ssl.trust-store-password"));
-//    }
 
     @Value("${api.server.ping}")
     private String serverPing;
 
+    @Value("${server.ssl.key-store}")
+    private Resource keyStore;
+
     @Value("${server.ssl.key-store-password}")
-    private String keyStorePassword;
-
-//    @Value("${server.ssl.key-password}")
-//    private String keyPassword;
-
-//    @Value("${server.ssl.trust-store-password}")
-//    private String trustStorePassword;
+    private char[] keyStorePassword;
 
     @Value("${server.ssl.trust-store}")
     private Resource trustStore;
@@ -73,8 +72,8 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
     @Autowired
     private ResourceLoader resourceLoader;
 
-//    @Autowired
-    private RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private RestTemplate restTemplate;// = new RestTemplate();
 
 //    @Override
     public void run(String... args) throws Exception {
@@ -88,15 +87,15 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
         SpringApplication.run(ClientApplication.class, args);
     }
 
-    @PostConstruct
-    public void setUp() {
-        System.setProperty("javax.net.debug", "ssl");
-        System.setProperty("https.protocols", "TLSv1.2");
-        System.setProperty("javax.net.ssl.keyStore", env.getProperty("server.ssl.key-store"));
-        System.setProperty("javax.net.ssl.keyStorePassword", env.getProperty("server.ssl.key-store-password"));
-        System.setProperty("javax.net.ssl.trustStore", env.getProperty("server.ssl.trust-store"));
-        System.setProperty("javax.net.ssl.trustStorePassword", env.getProperty("server.ssl.trust-store-password"));
-    }
+//    @PostConstruct
+//    public void setUp() {
+//        System.setProperty("javax.net.debug", "ssl");
+//        System.setProperty("https.protocols", "TLSv1.2");
+//        System.setProperty("javax.net.ssl.keyStore", env.getProperty("server.ssl.key-store"));
+//        System.setProperty("javax.net.ssl.keyStorePassword", env.getProperty("server.ssl.key-store-password"));
+//        System.setProperty("javax.net.ssl.trustStore", env.getProperty("server.ssl.trust-store"));
+//        System.setProperty("javax.net.ssl.trustStorePassword", env.getProperty("server.ssl.trust-store-password"));
+//    }
 
     @RequestMapping(value = "/server/ping")
     public ResponseEntity<String> pingServer() {
@@ -111,23 +110,23 @@ public class ClientApplication extends WebSecurityConfigurerAdapter /*implements
                 .anyRequest().permitAll();
     }
 
-//    @Bean
-//    public RestTemplate restTemplateProvider() throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
-//        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-//        keyStore.load(resourceLoader.getResource("classpath:client-keystore.jks").getInputStream(), keyStorePassword.toCharArray());
-//        KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-//        trustStore.load(resourceLoader.getResource("classpath:client-truststore.jks").getInputStream(), trustStorePassword.toCharArray());
-//
-//        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(
-//                new SSLContextBuilder()
-//                        .loadTrustMaterial(trustStore, new TrustSelfSignedStrategy())
-//                        .loadKeyMaterial(keyStore, keyStorePassword.toCharArray()).build());
-//        CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(socketFactory).build();
-//        ClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
-//
-//        return new RestTemplate(requestFactory);
-////        return new RestTemplate();
-//    }
+    @Bean
+    public RestTemplate restTemplateProvider() throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
+        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        keyStore.load(this.keyStore.getInputStream(), keyStorePassword);
+        KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        trustStore.load(this.trustStore.getInputStream(), trustStorePassword);
+
+        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(
+                new SSLContextBuilder()
+                        .loadTrustMaterial(trustStore, (x509Certificates, s) -> false)
+                        .loadKeyMaterial(keyStore, keyStorePassword).build());
+        CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(socketFactory).build();
+        ClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
+
+        return new RestTemplate(requestFactory);
+//        return new RestTemplate();
+    }
 
 
 //    @Bean
